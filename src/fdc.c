@@ -1011,6 +1011,18 @@ static uint32_t	FDC_DelayToFdcCycles ( uint32_t Delay_micro )
  * in cycInt.c. This should be replaced some days by using MachineClocks.CPU_Freq.
  * (for Falcon, we multiply cycles by 2 to simulate a freq in the 8 MHz range)
  */
+/* Speed-up factor of the emulated floppy drive : with "fast floppy" the disk rotates */
+/* N times faster (rotation, index pulses, timers and byte transfers all scale together) */
+static int	FDC_FastFactor ( void )
+{
+	if ( !ConfigureParams.DiskImage.FastFloppy )
+		return 1;
+	if ( ConfigureParams.DiskImage.nFastFloppyFactor < 1 )
+		return FDC_FAST_FDC_FACTOR;
+	return ConfigureParams.DiskImage.nFastFloppyFactor;
+}
+
+
 static uint32_t	FDC_FdcCyclesToCpuCycles ( uint32_t FdcCycles )
 {
 	uint32_t	CpuCycles;
@@ -1024,6 +1036,13 @@ static uint32_t	FDC_FdcCyclesToCpuCycles ( uint32_t FdcCycles )
 //	CpuCycles = rint ( ( (uint64_t)FdcCycles * MachineClocks.CPU_Freq ) / MachineClocks.FDC_Freq );
 	CpuCycles = rint ( ( (uint64_t)FdcCycles * 8021247.L ) / MachineClocks.FDC_Freq );
 	CpuCycles <<= nCpuFreqShift;				/* Convert to x1 or x2 or x4 cpu speed */
+
+	if ( CpuCycles > 0 )
+	{
+		CpuCycles /= FDC_FastFactor();			/* fast floppy */
+		if ( CpuCycles == 0 )
+			CpuCycles = 1;
+	}
 
 //fprintf ( stderr , "fdc command %d machine %d fdc cycles %d cpu cycles %d\n" , FDC.Command , ConfigureParams.System.nMachineType , FdcCycles , CpuCycles );
 //if ( Delay==4104) Delay=4166;		// 4166 : decade demo
@@ -1045,6 +1064,7 @@ static uint32_t	FDC_CpuCyclesToFdcCycles ( uint32_t CpuCycles )
 
 
 	CpuCycles >>= nCpuFreqShift;				/* Compensate for x2 or x4 cpu speed */
+	CpuCycles *= FDC_FastFactor();				/* fast floppy */
 
 //	FdcCycles = rint ( ( (uint64_t)CpuCycles * MachineClocks.FDC_Freq ) / MachineClocks.CPU_Freq );
 	FdcCycles = rint ( ( (uint64_t)CpuCycles * MachineClocks.FDC_Freq ) / 8021247.L );
@@ -1101,8 +1121,6 @@ static void	FDC_StartTimer_FdcCycles ( int FdcCycles , int InternalCycleOffset )
 {
 //fprintf ( stderr , "fdc start timer %d cycles\n" , FdcCycles );
 
-	if ( ( ConfigureParams.DiskImage.FastFloppy ) && ( FdcCycles > FDC_FAST_FDC_FACTOR ) )
-		FdcCycles /= FDC_FAST_FDC_FACTOR;
 
 	CycInt_AddRelativeInterruptWithOffset ( FDC_FdcCyclesToCpuCycles ( FdcCycles ) , INT_CPU_CYCLE , INTERRUPT_FDC , InternalCycleOffset );
 }

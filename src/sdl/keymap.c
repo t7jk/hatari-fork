@@ -809,6 +809,9 @@ static bool IsKeyTranslatable(SDL_Keycode symkey)
  */
 static bool Keymap_IsShortCutMod(int modkey)
 {
+	/* Ctrl+Alt (any side) also acts as the shortcut modifier, for laptops without AltGr */
+	if ((modkey & KMOD_CTRL) && (modkey & KMOD_ALT))
+		return true;
 	return (modkey & (KMOD_RALT|KMOD_LGUI|KMOD_RGUI|KMOD_MODE)) != 0;
 }
 

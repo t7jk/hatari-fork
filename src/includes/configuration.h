@@ -83,6 +83,7 @@ typedef struct
   int SdlAudioBufferSize;
   char szYMCaptureFileName[FILENAME_MAX];
   int YmVolumeMixing;
+  int nVolume;            /* 0 (silence) - 20 (max) */
 } CNF_SOUND;
 
 
@@ -220,6 +221,7 @@ typedef enum
 typedef struct
 {
   bool bAutoInsertDiskB;
+  int nFastFloppyFactor;		/* FDC delay divider when FastFloppy is on (>=1) */
   bool FastFloppy;			/* true to speed up FDC emulation */
   bool EnableDriveA;
   bool EnableDriveB;
@@ -483,6 +485,8 @@ extern void Configuration_SetDefault(void);
 extern void Configuration_Apply(bool bReset);
 extern void Configuration_Load(const char *psFileName);
 extern void Configuration_Save(void);
+extern void Configuration_SaveVolume(void);
+extern void Configuration_SaveFastFloppyFactor(void);
 extern void Configuration_MemorySnapShot_Capture(bool bSave);
 extern const char* Configuration_GetScreenShotDir(void);
 extern void Configuration_ChangeCpuFreq ( int CpuFreq_new );

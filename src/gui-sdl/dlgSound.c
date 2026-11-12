@@ -27,13 +27,18 @@ const char DlgSound_fileid[] = "Hatari dlgSound.c";
 #define DLGSOUND_MODEL      16
 #define DLGSOUND_TABLE      17
 #define DLGSOUND_LINEAR     18
-#define DLGSOUND_EXIT       19
+#define DLGSOUND_VOLDOWN    20
+#define DLGSOUND_VOLTEXT    21
+#define DLGSOUND_VOLUP      22
+#define DLGSOUND_EXIT       23
+
+static char volText[3] = "20";
 
 /* The sound dialog: */
 static SGOBJ sounddlg[] =
 {
-	{ SGBOX,      0,0,  0, 0, 40,17, NULL },
-	{ SGBOX,      0,0,  1, 1, 38,13, NULL },
+	{ SGBOX,      0,0,  0, 0, 40,19, NULL },
+	{ SGBOX,      0,0,  1, 1, 38,15, NULL },
 	{ SGTEXT,     0,0,  4, 2,  5,1, "SOUND" },
 	{ SGCHECKBOX, 0,0, 13, 2,  9,1, "_Enabled" },
 	{ SGCHECKBOX, 0,0, 25, 2, 13,1, "Syn_chronize" },
@@ -54,7 +59,12 @@ static SGOBJ sounddlg[] =
 	{ SGRADIOBUT, 0,0, 15,12, 10,1, "_ST table" },
 	{ SGRADIOBUT, 0,0, 28,12,  8,1, "_Linear" },
 
-	{ SGBUTTON, SG_DEFAULT, 0, 10,15, 20,1, "Back to main menu" },
+	{ SGTEXT,     0,0,  4,14,  7,1, "Volume:" },
+	{ SGBUTTON,   0,0, 13,14,  3,1, "<" },
+	{ SGTEXT,     0,0, 18,14,  2,1, volText },
+	{ SGBUTTON,   0,0, 21,14,  3,1, ">" },
+
+	{ SGBUTTON, SG_DEFAULT, 0, 10,17, 20,1, "Back to main menu" },
 	{ SGSTOP, 0, 0, 0,0, 0,0, NULL }
 };
 
@@ -118,13 +128,23 @@ void Dialog_SoundDlg(void)
 	else
 		sounddlg[DLGSOUND_LINEAR].state |= SG_SELECTED;
 
+	sprintf(volText, "%2d", ConfigureParams.Sound.nVolume);
+
 	/* The sound dialog main loop */
 	do
 	{
 		but = SDLGui_DoDialog(sounddlg);
+		if (but == DLGSOUND_VOLDOWN && ConfigureParams.Sound.nVolume > 0)
+			ConfigureParams.Sound.nVolume--;
+		else if (but == DLGSOUND_VOLUP && ConfigureParams.Sound.nVolume < 20)
+			ConfigureParams.Sound.nVolume++;
+		sprintf(volText, "%2d", ConfigureParams.Sound.nVolume);
 	}
 	while (but != DLGSOUND_EXIT && but != SDLGUI_QUIT
 	        && but != SDLGUI_ERROR && !bQuitProgram );
+
+	/* Remember the volume for the next start */
+	Configuration_SaveVolume();
 
 	/* Read values from dialog */
 	ConfigureParams.Sound.bEnableSound = (sounddlg[DLGSOUND_ENABLE].state & SG_SELECTED);

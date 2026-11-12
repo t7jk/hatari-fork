@@ -37,13 +37,32 @@ const char DlgFloppy_fileid[] = "Hatari dlgFloppy.c";
 #define FLOPPYDLG_PROTOFF     21
 #define FLOPPYDLG_PROTON      22
 #define FLOPPYDLG_PROTAUTO    23
-#define FLOPPYDLG_EXIT        24
+#define FLOPPYDLG_SPEEDTXT    24
+#define FLOPPYDLG_SPEEDDOWN   25
+#define FLOPPYDLG_SPEEDVAL    26
+#define FLOPPYDLG_SPEEDUP     27
+#define FLOPPYDLG_EXIT        28
 
+
+/* Selectable values of ConfigureParams.DiskImage.nFastFloppyFactor */
+static const int nSpeedSteps[] = { 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000 };
+#define NB_SPEED_STEPS ((int)(sizeof(nSpeedSteps)/sizeof(nSpeedSteps[0])))
+static char speedText[6] = "x100";
+
+/* Index of the step closest to (not above) the given factor */
+static int SpeedStepIndex(int factor)
+{
+	int i, idx = 0;
+	for (i = 0; i < NB_SPEED_STEPS; i++)
+		if (nSpeedSteps[i] <= factor)
+			idx = i;
+	return idx;
+}
 
 /* The floppy disks dialog: */
 static SGOBJ floppydlg[] =
 {
-	{ SGBOX, 0, 0, 0,0, 64,20, NULL },
+	{ SGBOX, 0, 0, 0,0, 64,22, NULL },
 	{ SGTEXT, 0, 0, 25,1, 12,1, "Floppy disks" },
 
 	{ SGTEXT, 0, 0, 2,3, 8,1, "Drive A:" },
@@ -70,7 +89,11 @@ static SGOBJ floppydlg[] =
 	{ SGRADIOBUT, 0, 0, 21,16,  5,1, "_Off" },
 	{ SGRADIOBUT, 0, 0, 28,16,  4,1, "O_n" },
 	{ SGRADIOBUT, 0, 0, 34,16,  6,1, "A_uto" },
-	{ SGBUTTON, SG_DEFAULT, 0, 22,18, 20,1, "Back to main menu" },
+	{ SGTEXT,     0, 0,  2,18, 18,1, "Fast floppy speed:" },
+	{ SGBUTTON,   0, 0, 21,18,  3,1, "<" },
+	{ SGTEXT,     0, 0, 26,18,  5,1, speedText },
+	{ SGBUTTON,   0, 0, 33,18,  3,1, ">" },
+	{ SGBUTTON, SG_DEFAULT, 0, 22,20, 20,1, "Back to main menu" },
 	{ SGSTOP, 0, 0, 0,0, 0,0, NULL }
 };
 
@@ -210,6 +233,8 @@ void DlgFloppy_Main(void)
 	else
 		floppydlg[FLOPPYDLG_FASTFLOPPY].state &= ~SG_SELECTED;
 
+	snprintf(speedText, sizeof(speedText), "x%d", ConfigureParams.DiskImage.nFastFloppyFactor);
+
 	/* Enable/disable drives A: and B: */
 	if (ConfigureParams.DiskImage.EnableDriveA)
 		floppydlg[FLOPPYDLG_ENABLE_A].state |= SG_SELECTED;
@@ -239,6 +264,21 @@ void DlgFloppy_Main(void)
 		but = SDLGui_DoDialog(floppydlg);
 		switch (but)
 		{
+		 case FLOPPYDLG_SPEEDDOWN:
+		 case FLOPPYDLG_SPEEDUP:
+			{
+				int idx = SpeedStepIndex(ConfigureParams.DiskImage.nFastFloppyFactor);
+				if (but == FLOPPYDLG_SPEEDDOWN)
+				{
+					if (nSpeedSteps[idx] == ConfigureParams.DiskImage.nFastFloppyFactor && idx > 0)
+						idx--;
+				}
+				else if (idx < NB_SPEED_STEPS - 1)
+					idx++;
+				ConfigureParams.DiskImage.nFastFloppyFactor = nSpeedSteps[idx];
+				snprintf(speedText, sizeof(speedText), "x%d", nSpeedSteps[idx]);
+			}
+			break;
 		 case FLOPPYDLG_EJECTA:                         /* Eject disk in drive A: */
 			Floppy_SetDiskFileNameNone(0);
 			dlgname[0][0] = '\0';
@@ -285,6 +325,7 @@ void DlgFloppy_Main(void)
 	}
 
 	ConfigureParams.DiskImage.bAutoInsertDiskB = (floppydlg[FLOPPYDLG_AUTOB].state & SG_SELECTED);
+	Configuration_SaveFastFloppyFactor();
 	ConfigureParams.DiskImage.FastFloppy = (floppydlg[FLOPPYDLG_FASTFLOPPY].state & SG_SELECTED);
 	ConfigureParams.DiskImage.EnableDriveA = (floppydlg[FLOPPYDLG_ENABLE_A].state & SG_SELECTED);
 	ConfigureParams.DiskImage.EnableDriveB = (floppydlg[FLOPPYDLG_ENABLE_B].state & SG_SELECTED);

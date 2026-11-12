@@ -334,6 +334,7 @@ static const struct Config_Tag configs_Sound[] =
 	{ "nSdlAudioBufferSize", Int_Tag, &ConfigureParams.Sound.SdlAudioBufferSize },
 	{ "szYMCaptureFileName", String_Tag, ConfigureParams.Sound.szYMCaptureFileName },
 	{ "YmVolumeMixing", Int_Tag, &ConfigureParams.Sound.YmVolumeMixing },
+	{ "nVolume", Int_Tag, &ConfigureParams.Sound.nVolume },
 	{ NULL , Error_Tag, NULL }
 };
 
@@ -354,6 +355,7 @@ static const struct Config_Tag configs_Floppy[] =
 {
 	{ "bAutoInsertDiskB", Bool_Tag, &ConfigureParams.DiskImage.bAutoInsertDiskB },
 	{ "FastFloppy", Bool_Tag, &ConfigureParams.DiskImage.FastFloppy },
+	{ "nFastFloppyFactor", Int_Tag, &ConfigureParams.DiskImage.nFastFloppyFactor },
 	{ "EnableDriveA", Bool_Tag, &ConfigureParams.DiskImage.EnableDriveA },
 	{ "DriveA_NumberOfHeads", Int_Tag, &ConfigureParams.DiskImage.DriveA_NumberOfHeads },
 	{ "EnableDriveB", Bool_Tag, &ConfigureParams.DiskImage.EnableDriveB },
@@ -630,6 +632,7 @@ void Configuration_SetDefault(void)
 	/* Set defaults for floppy disk images */
 	ConfigureParams.DiskImage.bAutoInsertDiskB = true;
 	ConfigureParams.DiskImage.FastFloppy = false;
+	ConfigureParams.DiskImage.nFastFloppyFactor = 100;
 	ConfigureParams.DiskImage.nWriteProtection = WRITEPROT_OFF;
 
 	ConfigureParams.DiskImage.EnableDriveA = true;
@@ -806,6 +809,7 @@ void Configuration_SetDefault(void)
 	                     psWorkingDir, "hatari", "wav");
 	ConfigureParams.Sound.SdlAudioBufferSize = 0;
 	ConfigureParams.Sound.YmVolumeMixing = YM_TABLE_MIXING;
+	ConfigureParams.Sound.nVolume = 20;
 
 	/* Set defaults for Rom */
 	FileName_MakePathBuf(ConfigureParams.Rom.szTosImageFileName,
@@ -936,6 +940,12 @@ void Configuration_Apply(bool bReset)
 	  && ( ConfigureParams.Sound.YmVolumeMixing != YM_TABLE_MIXING  )
 	  && ( ConfigureParams.Sound.YmVolumeMixing != YM_MODEL_MIXING ) )
 		ConfigureParams.Sound.YmVolumeMixing = YM_TABLE_MIXING;
+
+	if (ConfigureParams.Sound.nVolume < 0 || ConfigureParams.Sound.nVolume > 20)
+		ConfigureParams.Sound.nVolume = 20;
+
+	if (ConfigureParams.DiskImage.nFastFloppyFactor < 1)
+		ConfigureParams.DiskImage.nFastFloppyFactor = 1;
 
 	YmVolumeMixing = ConfigureParams.Sound.YmVolumeMixing;
 	Sound_SetYmVolumeMixing();
@@ -1152,6 +1162,37 @@ static int Configuration_SaveSection(const char *pFilename, const struct Config_
 			   pFilename, pSection);
 
 	return ret;
+}
+
+
+/*-----------------------------------------------------------------------*/
+/**
+ * Save only the sound volume (key nVolume of [Sound]) to the configuration
+ * file, so that it is remembered at next start without touching the rest.
+ */
+void Configuration_SaveVolume(void)
+{
+	static const struct Config_Tag configs_Volume[] =
+	{
+		{ "nVolume", Int_Tag, &ConfigureParams.Sound.nVolume },
+		{ NULL , Error_Tag, NULL }
+	};
+	Configuration_SaveSection(sConfigFileName, configs_Volume, "[Sound]");
+}
+
+
+/*-----------------------------------------------------------------------*/
+/**
+ * Save only the fast floppy speed factor (key nFastFloppyFactor of [Floppy])
+ */
+void Configuration_SaveFastFloppyFactor(void)
+{
+	static const struct Config_Tag configs_Factor[] =
+	{
+		{ "nFastFloppyFactor", Int_Tag, &ConfigureParams.DiskImage.nFastFloppyFactor },
+		{ NULL , Error_Tag, NULL }
+	};
+	Configuration_SaveSection(sConfigFileName, configs_Factor, "[Floppy]");
 }
 
 

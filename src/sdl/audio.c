@@ -115,6 +115,15 @@ static void Audio_CallBack(void *userdata, Uint8 *stream, int len)
 		
 	}
 
+	/* Apply master volume (0-9) */
+	if (ConfigureParams.Sound.nVolume < 20)
+	{
+		int vol = ConfigureParams.Sound.nVolume;
+		Sint16 *p = (Sint16 *)stream;
+		for (i = 0; i < len * 2; i++)
+			p[i] = (Sint16)((p[i] * vol) / 20);
+	}
+
 	AudioMixBuffer_pos_read = AudioMixBuffer_pos_read & AUDIOMIXBUFFER_SIZE_MASK;
 //fprintf ( stderr , "audio cb out len=%d gensmpl=%d idx=%d\n" , len , nGeneratedSamples , AudioMixBuffer_pos_read );
 }
