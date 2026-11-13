@@ -14,6 +14,7 @@ const char Change_fileid[] = "Hatari change.c";
 
 #include <ctype.h>
 #include "main.h"
+#include "activitylog.h"
 #include "configuration.h"
 #include "audio.h"
 #include "change.h"
@@ -202,6 +203,10 @@ void Change_CopyChangedParamsToConfiguration(CNF_PARAMS *current, CNF_PARAMS *ch
 		NeedReset = bForceReset;
 	else
 		NeedReset = Change_DoNeedReset(current, changed);
+
+	ActLog_Printf("CONFIG", "config change applied (needs reset: %d, TOS: %s, machine %d, CPU level %d, RAM %d)",
+	              NeedReset, changed->Rom.szTosImageFileName, changed->System.nMachineType,
+	              changed->System.nCpuLevel, changed->Memory.STRamSize_KB);
 
 	/* Do need to change resolution? Need if change display/overscan settings
 	 * (if switch between Colour/Mono cause reset later) or toggle statusbar

@@ -15,6 +15,7 @@
 #endif
 
 #include "configuration.h"
+#include "activitylog.h"
 #include "control.h"
 #include "conv_st.h"
 #include "gui_event.h"
@@ -165,9 +166,11 @@ void GuiEvent_EventHandler(void)
 				break;
 			}
 #if ENABLE_SDL3
+			ActLog_Printf("KEY", "down scancode=%d (%s)", (int)event.key.scancode, SDL_GetScancodeName(event.key.scancode));
 			Keymap_KeyDown(event.key.mod, event.key.key,
 			               event.key.scancode);
 #else
+			ActLog_Printf("KEY", "down scancode=%d (%s)", (int)event.key.keysym.scancode, SDL_GetScancodeName(event.key.keysym.scancode));
 			Keymap_KeyDown(event.key.keysym.mod, event.key.keysym.sym,
 			               event.key.keysym.scancode);
 #endif
@@ -175,9 +178,11 @@ void GuiEvent_EventHandler(void)
 
 		 case SDL_KEYUP:
 #if ENABLE_SDL3
+			ActLog_Printf("KEY", "up scancode=%d (%s)", (int)event.key.scancode, SDL_GetScancodeName(event.key.scancode));
 			Keymap_KeyUp(event.key.mod, event.key.key,
 			             event.key.scancode);
 #else
+			ActLog_Printf("KEY", "up scancode=%d (%s)", (int)event.key.keysym.scancode, SDL_GetScancodeName(event.key.keysym.scancode));
 			Keymap_KeyUp(event.key.keysym.mod, event.key.keysym.sym,
 			             event.key.keysym.scancode);
 #endif

@@ -11,6 +11,7 @@ const char HDC_fileid[] = "Hatari hdc.c";
 #include <errno.h>
 
 #include "main.h"
+#include "activitylog.h"
 #include "configuration.h"
 #include "debugui.h"
 #include "endianswap.h"
@@ -1166,6 +1167,7 @@ bool HDC_WriteCommandPacket(SCSI_CTRLR *ctr, uint8_t b)
 		 * always be handled, see SCSI standard */
 		if (HDC_GetLUN(ctr) == 0 || ctr->opcode == HD_INQUIRY)
 		{
+			ActLog_Printf("HDC", "%s", HDC_CmdInfoStr(ctr));
 			HDC_EmulateCommandPacket(ctr);
 			bDidCmd = true;
 		}

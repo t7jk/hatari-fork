@@ -21,6 +21,7 @@ typedef struct
   bool bConfirmQuit;
   bool bNatFeats;
   bool bConsoleWindow;	/* for now, used just for Windows */
+  bool bLogToFile;	/* activity log to <HatariHome>/logs/ */
 } CNF_LOG;
 
 /* when to autoload program symbols */

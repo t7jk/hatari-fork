@@ -27,6 +27,7 @@ const char Floppy_fileid[] = "Hatari floppy.c";
 #include <assert.h>
 
 #include "main.h"
+#include "activitylog.h"
 #include "configuration.h"
 #include "file.h"
 #include "filename.h"
@@ -627,6 +628,7 @@ bool Floppy_InsertDiskIntoDrive(int Drive)
 	EmulationDrives[Drive].nImageBytes = nImageBytes;
 	EmulationDrives[Drive].bDiskInserted = true;
 	EmulationDrives[Drive].bContentsChanged = false;
+	ActLog_Printf("FLOPPY", "insert drive %d: %s (type %d, %ld bytes)", Drive, filename, ImageType, nImageBytes);
 
 	if ( ( ImageType == FLOPPY_IMAGE_TYPE_ST ) || ( ImageType == FLOPPY_IMAGE_TYPE_MSA )
 	  || ( ImageType == FLOPPY_IMAGE_TYPE_DIM ) )
@@ -665,6 +667,7 @@ bool Floppy_EjectDiskFromDrive(int Drive)
 	if (EmulationDrives[Drive].bDiskInserted)
 	{
 		bool bSaved = false;
+		ActLog_Printf("FLOPPY", "eject drive %d: %s", Drive, EmulationDrives[Drive].sFileName);
 		char *psFileName = EmulationDrives[Drive].sFileName;
 
 		/* OK, has contents changed? If so, need to save */

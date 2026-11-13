@@ -79,6 +79,7 @@ const char IKBD_fileid[] = "Hatari ikbd.c";
 #include <inttypes.h>
 
 #include "main.h"
+#include "activitylog.h"
 #include "configuration.h"
 #include "ikbd.h"
 #include "cycles.h"
@@ -1017,6 +1018,7 @@ static void	IKBD_Cmd_Return_Byte_Delay ( uint8_t Data , int Delay_Cycles )
  */
 static void	IKBD_Send_Byte_Delay ( uint8_t Data , int Delay_Cycles )
 {
+	ActLog_Printf("IKBD", "byte to ACIA: 0x%02x", Data);
 //fprintf ( stderr , "send byte=0x%02x delay=%d\n" , Data , Delay_Cycles );
 	/* Is keyboard initialised yet ? Ignore any bytes until it is */
 	if ( bDuringResetCriticalTime )

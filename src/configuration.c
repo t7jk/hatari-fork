@@ -55,6 +55,7 @@ static const struct Config_Tag configs_Log[] =
 	{ "bConfirmQuit", Bool_Tag, &ConfigureParams.Log.bConfirmQuit },
 	{ "bNatFeats", Bool_Tag, &ConfigureParams.Log.bNatFeats },
 	{ "bConsoleWindow", Bool_Tag, &ConfigureParams.Log.bConsoleWindow },
+	{ "bLogToFile", Bool_Tag, &ConfigureParams.Log.bLogToFile },
 	{ NULL , Error_Tag, NULL }
 };
 
@@ -612,6 +613,7 @@ void Configuration_SetDefault(void)
 	ConfigureParams.Log.bConfirmQuit = true;
 	ConfigureParams.Log.bNatFeats = false;
 	ConfigureParams.Log.bConsoleWindow = false;
+	ConfigureParams.Log.bLogToFile = true;
 
 	/* Set defaults for debugger */
 	ConfigureParams.Debugger.nNumberBase = 10;

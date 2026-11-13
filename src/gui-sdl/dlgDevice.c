@@ -12,6 +12,7 @@ const char DlgDevice_fileid[] = "Hatari dlgDevice.c";
 #include "main.h"
 #include "configuration.h"
 #include "dialog.h"
+#include "activitylog.h"
 #include "sdlgui.h"
 #include "filename.h"
 #include "midi.h"  /* needed only with PortMidi */
@@ -32,7 +33,8 @@ const char DlgDevice_fileid[] = "Hatari dlgDevice.c";
 #define DEVDLG_MIDIINNAME      19
 #define DEVDLG_MIDIOUTBROWSE   21
 #define DEVDLG_MIDIOUTNAME     22
-#define DEVDLG_EXIT            23
+#define DEVDLG_LOGTOFILE       23
+#define DEVDLG_EXIT            24
 #else
 #define DEVDLG_PREVIN          18
 #define DEVDLG_NEXTIN          19
@@ -40,7 +42,8 @@ const char DlgDevice_fileid[] = "Hatari dlgDevice.c";
 #define DEVDLG_PREVOUT         23
 #define DEVDLG_NEXTOUT         24
 #define DEVDLG_MIDIOUTNAME     26
-#define DEVDLG_EXIT            27
+#define DEVDLG_LOGTOFILE       27
+#define DEVDLG_EXIT            28
 #endif
 
 
@@ -54,7 +57,7 @@ static char dlgMidiOutName[MAX_DLG_FILENAME];
 /* The devices dialog: */
 static SGOBJ devicedlg[] =
 {
-	{ SGBOX, 0, 0, 0,0, 52,24, NULL },
+	{ SGBOX, 0, 0, 0,0, 52,26, NULL },
 	{ SGTEXT, 0, 0, 20,1, 13,1, "Devices setup" },
 
 	{ SGBOX, 0, 0, 1,3, 50,4, NULL },
@@ -93,7 +96,8 @@ static SGOBJ devicedlg[] =
 	{ SGBOX, 0, 0, 18,19, 32,1, NULL },
 	{ SGTEXT, 0, 0, 19,19, 30,1, dlgMidiOutName },
 #endif
- 	{ SGBUTTON, SG_DEFAULT, 0, 16,22, 20,1, "Back to main menu" },
+ 	{ SGCHECKBOX, 0, 0, 2,21, 40,1, "_Log to file (~/.config/hatari/logs)" },
+ 	{ SGBUTTON, SG_DEFAULT, 0, 16,24, 20,1, "Back to main menu" },
 	{ SGSTOP, 0, 0, 0,0, 0,0, NULL }
 };
 
@@ -140,6 +144,11 @@ void Dialog_DeviceDlg(void)
 	midiOutName = Midi_Host_GetPortName(ConfigureParams.Midi.sMidiOutPortName, MIDI_NAME_FIND, MIDI_FOR_OUTPUT);
 	FileName_Shrink(dlgMidiOutName,  midiOutName ? midiOutName : "Off", devicedlg[DEVDLG_MIDIOUTNAME].w);
 #endif
+
+	if (ConfigureParams.Log.bLogToFile)
+		devicedlg[DEVDLG_LOGTOFILE].state |= SG_SELECTED;
+	else
+		devicedlg[DEVDLG_LOGTOFILE].state &= ~SG_SELECTED;
 
 	/* The devices dialog main loop */
 	do
@@ -218,6 +227,11 @@ void Dialog_DeviceDlg(void)
 	ConfigureParams.Printer.bEnablePrinting = (devicedlg[DEVDLG_PRNENABLE].state & SG_SELECTED);
 	ConfigureParams.RS232.bEnableRS232 = (devicedlg[DEVDLG_RS232ENABLE].state & SG_SELECTED);
 	ConfigureParams.Midi.bEnableMidi = (devicedlg[DEVDLG_MIDIENABLE].state & SG_SELECTED);
+	ConfigureParams.Log.bLogToFile = (devicedlg[DEVDLG_LOGTOFILE].state & SG_SELECTED);
+	if (ConfigureParams.Log.bLogToFile && !ActLog_IsEnabled())
+		ActLog_Init();
+	else if (!ConfigureParams.Log.bLogToFile && ActLog_IsEnabled())
+		ActLog_UnInit();
 #ifdef HAVE_PORTMIDI
 	Str_Copy(ConfigureParams.Midi.sMidiInPortName, midiInName ? midiInName : "Off",
 	         sizeof(ConfigureParams.Midi.sMidiInPortName));

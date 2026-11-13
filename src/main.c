@@ -11,6 +11,7 @@ const char Main_fileid[] = "Hatari main.c";
 #include <time.h>
 
 #include "main.h"
+#include "activitylog.h"
 #include "version.h"
 #include "configuration.h"
 #include "control.h"
@@ -148,6 +149,7 @@ static void Main_InitSubsystems(void)
 	{
 		Main_ErrorExit("Logging/tracing initialization failed", NULL, -1);
 	}
+	ActLog_Init();
 	Log_Printf(LOG_INFO, PROG_NAME ", compiled on:  " __DATE__ ", " __TIME__ "\n");
 
 	if ( IPF_Init() != true )
@@ -237,6 +239,8 @@ static void Main_UnInitSubsystems(void)
 	Screen_UnInit();
 	ConvST_UnInit();
 	Exit680x0();
+
+	ActLog_UnInit();
 
 	IPF_Exit();
 

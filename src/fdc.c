@@ -20,6 +20,7 @@ const char FDC_fileid[] = "Hatari fdc.c";
 #include <inttypes.h>
 
 #include "main.h"
+#include "activitylog.h"
 #include "configuration.h"
 #include "fdc.h"
 #include "hdc.h"
@@ -1815,6 +1816,8 @@ void	FDC_SetDriveSide ( uint8_t io_porta_old , uint8_t io_porta_new )
 		}
 	}
 
+	if ( FDC.SideSignal != Side || FDC.DriveSelSignal != Drive )
+		ActLog_Printf("FDC", "drive/side select: drive %d->%d side %d->%d (PSG A=0x%02x)", FDC.DriveSelSignal, Drive, FDC.SideSignal, Side, io_porta_new);
 	FDC.SideSignal = Side;
 	FDC.DriveSelSignal = Drive;
 
@@ -2501,6 +2504,9 @@ uint8_t FDC_GetCmdType ( uint8_t CR )
  */
 static void FDC_Update_STR ( uint8_t DisableBits , uint8_t EnableBits )
 {
+	if ( ( ( DisableBits & FDC_STR_BIT_MOTOR_ON ) && ( FDC.STR & FDC_STR_BIT_MOTOR_ON ) )
+	  || ( ( EnableBits & FDC_STR_BIT_MOTOR_ON ) && !( FDC.STR & FDC_STR_BIT_MOTOR_ON ) ) )
+		ActLog_Printf("FDC", "motor %s (drive %d)", ( EnableBits & FDC_STR_BIT_MOTOR_ON ) ? "ON" : "OFF", FDC.DriveSelSignal);
 	FDC.STR &= (~DisableBits);					/* Clear bits in DisableBits */
 	FDC.STR |= EnableBits;						/* Set bits in EnableBits */
 
@@ -4686,6 +4692,7 @@ static void FDC_WriteCommandRegister ( void )
 	}
 
 	FDC.CR = IoMem_ReadByte(0xff8605);
+	ActLog_Printf("FDC", "command 0x%02x type %d drive %d side %d TR=%d SR=%d head=%d pc=%x", FDC.CR, FDC_GetCmdType(FDC.CR), FDC.DriveSelSignal, FDC.SideSignal, FDC.TR, FDC.SR, FDC.DriveSelSignal >= 0 ? FDC_DRIVES[FDC.DriveSelSignal].HeadTrack : -1, M68000_GetPC());
 	FDC_ExecuteCommand();
 }
 

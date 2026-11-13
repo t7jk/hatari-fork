@@ -9,6 +9,7 @@
 const char Reset_fileid[] = "Hatari reset.c";
 
 #include "main.h"
+#include "activitylog.h"
 #include "configuration.h"
 #include "cart.h"
 #include "conv_st.h"
@@ -53,6 +54,7 @@ const char Reset_fileid[] = "Hatari reset.c";
  */
 static int Reset_ST(bool bCold)
 {
+	ActLog_Printf("RESET", "%s reset", bCold ? "cold" : "warm");
 	/* Ensure MMU has default values before calling memory_init() later */
 	STMemory_Reset ( bCold );
 

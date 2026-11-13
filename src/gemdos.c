@@ -43,6 +43,7 @@ const char Gemdos_fileid[] = "Hatari gemdos.c";
 #include <inttypes.h>
 
 #include "main.h"
+#include "activitylog.h"
 #include "cart.h"
 #include "configuration.h"
 #include "event.h"
@@ -2177,6 +2178,7 @@ static bool GemDOS_Open(uint32_t Params)
 		  "GEMDOS 0x3D Fopen(\"%s\", %s) at PC=0x%X\n",
 		  pszFileName, Modes[Mode], CallingPC);
 
+	ActLog_Printf("GEMDOS", "Fopen(\"%s\", %s) pc=%x", pszFileName, Modes[Mode], CallingPC);
 	Drive = GemDOS_FileName2HardDriveID(pszFileName);
 
 	if (!ISHARDDRIVE(Drive))

@@ -17,6 +17,7 @@ set(SOURCES
 	conv_st.c
 	cycInt.c
 	cycles.c
+	activitylog.c
 	dialog.c
 	dmaSnd.c
 	event.c

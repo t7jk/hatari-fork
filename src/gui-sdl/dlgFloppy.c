@@ -121,10 +121,24 @@ static void DlgDisk_BrowseDisk(char *dlgname, int drive, int diskid)
 {
 	char *selname, *zip_path;
 	const char *tmpname, *realname;
+	char dirbuf[FILENAME_MAX];
 
 	assert(drive >= 0 && drive < MAX_FLOPPYDRIVES);
 	if (ConfigureParams.DiskImage.szDiskFileName[drive][0])
 		tmpname = ConfigureParams.DiskImage.szDiskFileName[drive];
+	else if (drive == 1 && ConfigureParams.DiskImage.szDiskFileName[0][0])
+	{
+		/* drive B empty: start in the same directory as drive A */
+		char *slash;
+		strncpy(dirbuf, ConfigureParams.DiskImage.szDiskFileName[0], sizeof(dirbuf)-1);
+		dirbuf[sizeof(dirbuf)-1] = '\0';
+		slash = strrchr(dirbuf, PATHSEP);
+		if (slash)
+			slash[1] = '\0';
+		else
+			strcpy(dirbuf, ConfigureParams.DiskImage.szDiskImageDirectory);
+		tmpname = dirbuf;
+	}
 	else
 		tmpname = ConfigureParams.DiskImage.szDiskImageDirectory;
 
