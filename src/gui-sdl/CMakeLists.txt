@@ -10,6 +10,7 @@ add_library(GuiSdl OBJECT
 	dlgHalt.c dlgHardDisk.c dlgJoystick.c dlgKeyboard.c dlgMain.c
 	dlgMemory.c dlgNewDisk.c dlgRecord.c dlgRom.c dlgScreen.c
 	dlgSound.c dlgSystem.c sdlgui.c
+	dlgBrowser.c browser_data.c browser_local.c
 	)
 
 target_compile_definitions(GuiSdl PRIVATE SDL_ENABLE_OLD_NAMES)

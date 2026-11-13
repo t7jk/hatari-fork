@@ -673,6 +673,7 @@ char* SDLGui_FileSelect(const char *title, const char *path_and_name, char **zip
 	int retbut, len;
 	bool bOldMouseVisibility;
 	int selection;                      /* The selection index */
+	int selabs = -1;                    /* Absolute index of the highlighted (chosen) entry */
 	char *zipfilename;                  /* Filename in zip file */
 	char *zipdir;
 	bool browsing_archive = false;      /* Are we browsing an archive? */
@@ -831,6 +832,18 @@ char* SDLGui_FileSelect(const char *title, const char *path_and_name, char **zip
 			refreshentries = false;
 		}
 
+		/* Highlight the chosen file in the list (also after scrolling) */
+		{
+			int hi;
+			for (hi = 0; hi < SGFS_NUMENTRIES; hi++)
+			{
+				if (selabs >= 0 && hi + ypos == selabs)
+					fsdlg[SGFSDLG_ENTRYFIRST+hi].state |= SG_SELECTED;
+				else
+					fsdlg[SGFSDLG_ENTRYFIRST+hi].state &= ~SG_SELECTED;
+			}
+		}
+
 		/* Show dialog: */
 		retbut = SDLGui_DoDialogExt(fsdlg, acceptEvents, &sdlEvent, retbut);
 
@@ -886,6 +899,7 @@ char* SDLGui_FileSelect(const char *title, const char *path_and_name, char **zip
 						FileName_Shrink(dlgpath, zipdir, DLGPATH_SIZE);
 					}
 					reloaddir = true;
+					selabs = -1;
 					/* Copy the path name to the dialog */
 					zipfilename[0] = '\0';
 					dlgfname[0] = 0;
@@ -896,6 +910,7 @@ char* SDLGui_FileSelect(const char *title, const char *path_and_name, char **zip
 				{
 					/* not dir, select a file in the zip */
 					selection = retbut-SGFSDLG_ENTRYFIRST+ypos;
+					selabs = selection;
 					strcpy(zipfilename, files[selection]->d_name);
 					FileName_Shrink(dlgfname, zipfilename, DLGFNAME_SIZE);
 				}
@@ -944,6 +959,7 @@ char* SDLGui_FileSelect(const char *title, const char *path_and_name, char **zip
 				{
 					/* Select a file */
 					selection = retbut-SGFSDLG_ENTRYFIRST+ypos;
+					selabs = selection;
 					strcpy(fname, files[selection]->d_name);
 					FileName_Shrink(dlgfname, fname, DLGFNAME_SIZE);
 				}
@@ -1069,6 +1085,7 @@ char* SDLGui_FileSelect(const char *title, const char *path_and_name, char **zip
 			if (reloaddir)
 			{
 				/* Remove old selection */
+				selabs = -1;
 				fname[0] = 0;
 				dlgfname[0] = 0;
 				ypos = 0;

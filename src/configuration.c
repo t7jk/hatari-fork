@@ -88,6 +88,7 @@ static const struct Config_Tag configs_Screen[] =
 	{ "bAllowOverscan", Bool_Tag, &ConfigureParams.Screen.bAllowOverscan },
 	{ "nSpec512Threshold", Int_Tag, &ConfigureParams.Screen.nSpec512Threshold },
 	{ "bAspectCorrect", Bool_Tag, &ConfigureParams.Screen.bAspectCorrect },
+	{ "bStretchFullScreen", Bool_Tag, &ConfigureParams.Screen.bStretchFullScreen },
 	{ "bUseExtVdiResolutions", Bool_Tag, &ConfigureParams.Screen.bUseExtVdiResolutions },
 	{ "nVdiWidth", Int_Tag, &ConfigureParams.Screen.nVdiWidth },
 	{ "nVdiHeight", Int_Tag, &ConfigureParams.Screen.nVdiHeight },
@@ -774,6 +775,7 @@ void Configuration_SetDefault(void)
 	ConfigureParams.Screen.bAllowOverscan = true;
 	ConfigureParams.Screen.nSpec512Threshold = 1;
 	ConfigureParams.Screen.bAspectCorrect = true;
+	ConfigureParams.Screen.bStretchFullScreen = false;
 	ConfigureParams.Screen.nMonitorType = MONITOR_TYPE_RGB;
 	ConfigureParams.Screen.bUseExtVdiResolutions = false;
 	ConfigureParams.Screen.nVdiWidth = 640;

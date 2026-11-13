@@ -316,6 +316,7 @@ typedef struct
   bool bFullScreen;
   bool bAllowOverscan;
   bool bAspectCorrect;
+  bool bStretchFullScreen;  /* fullscreen: stretch to whole display (no letterbox) */
   bool bShowStatusbar;
   bool bShowDriveLed;
   bool bMouseWarp;

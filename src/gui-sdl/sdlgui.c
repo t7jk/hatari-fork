@@ -27,6 +27,7 @@ const char SDLGui_fileid[] = "Hatari sdlgui.c";
 #define ev2mod(e) e.key.keysym.mod
 #endif
 
+#include "configuration.h"
 #include "joy_ui.h"
 #include "screen.h"
 #include "screen_sdl.h"
@@ -57,6 +58,8 @@ static SDL_Surface *pSdlGuiScrn;            /* Pointer to the actual main SDL sc
 static SDL_Surface *pSmallFontGfx = NULL;   /* The small font graphics */
 static SDL_Surface *pBigFontGfx = NULL;     /* The big font graphics */
 static SDL_Surface *pFontGfx = NULL;        /* The actual font graphics */
+static SDL_Surface *pRealScrn = NULL;       /* the real screen (pSdlGuiScrn is a virtual one while zoomed) */
+static SGZoom *pCurZoom = NULL;             /* active dialog zoom, NULL if none */
 
 static struct {
 	Uint32 darkbar, midbar, lightbar;
@@ -194,6 +197,7 @@ int SDLGui_UnInit(void)
 }
 
 
+
 /*-----------------------------------------------------------------------*/
 /**
  * Inform the SDL-GUI about the actual SDL_Surface screen pointer and
@@ -202,6 +206,7 @@ int SDLGui_UnInit(void)
 int SDLGui_SetScreen(SDL_Surface *pScrn)
 {
 	pSdlGuiScrn = pScrn;
+	pRealScrn = pScrn;
 
 	if (pScrn == NULL)
 		return -1;
@@ -376,7 +381,11 @@ static void SDLGui_DrawText(const SGOBJ *tdlg, int objnum)
 		rect.y = y;
 		rect.w = tdlg[objnum].w * sdlgui_fontwidth;
 		rect.h = tdlg[objnum].h * sdlgui_fontheight;
-		if (tdlg[objnum].state & SG_FOCUSED)
+		if ((tdlg[objnum].state & (SG_SELECTED|SG_FOCUSED)) == (SG_SELECTED|SG_FOCUSED))
+			SDL_FillRect(pSdlGuiScrn, &rect, colors.lightgrey);	/* chosen + current */
+		else if (tdlg[objnum].state & SG_SELECTED)
+			SDL_FillRect(pSdlGuiScrn, &rect, colors.darkgrey);	/* chosen entry */
+		else if (tdlg[objnum].state & SG_FOCUSED)
 			SDL_FillRect(pSdlGuiScrn, &rect, colors.focus);
 		else
 			SDL_FillRect(pSdlGuiScrn, &rect, colors.midgrey);
@@ -754,7 +763,7 @@ static void SDLGui_EditField(SGOBJ *dlg, int objnum)
 			SDL_FillRect(pSdlGuiScrn, &cursorrect, colors.cursor);
 		}
 		SDLGui_Text(rect.x, rect.y, dlg[objnum].txt);  /* Draw text */
-		Screen_UpdateRects(pSdlGuiScrn, 1, &rect);
+		SDLGui_Present(rect.x, rect.y, rect.w, rect.h);
 	}
 	while (!bStopEditing);
 
@@ -801,6 +810,98 @@ static void SDLGui_DrawObj(const SGOBJ *dlg, int i)
 	}
 }
 
+
+/*-----------------------------------------------------------------------*/
+/**
+ * Dialog zoom: a dialog is drawn on its own small surface (size of the
+ * dialog in pixels) which is then scaled up to fill ~96% of the real
+ * screen, so that every dialog is as big on big (e.g. desktop sized)
+ * screens.  The screen under the dialog is saved and restored.
+ * Returns true if zoom is active (needs End), false if the dialog is drawn
+ * directly (small screen or unsupported surface format).
+ */
+bool SDLGui_ZoomBegin(SGZoom *z, int pxw, int pxh)
+{
+	float s;
+	SDL_Rect bgr;
+
+	memset(z, 0, sizeof(*z));
+	if (!pRealScrn || pxw <= 0 || pxh <= 0 || pRealScrn->format->palette != NULL)
+		return false;
+	s = (float)pRealScrn->w * 96 / 100 / pxw;
+	if ((float)pRealScrn->h * 96 / 100 / pxh < s)
+		s = (float)pRealScrn->h * 96 / 100 / pxh;
+	if (s < 1.05f)
+		return false;
+
+	z->dst.w = (int)(pxw * s);
+	z->dst.h = (int)(pxh * s);
+	z->dst.x = (pRealScrn->w - z->dst.w) / 2;
+	z->dst.y = (pRealScrn->h - z->dst.h) / 2;
+	z->scale = s;
+
+	z->virt = SDL_CreateRGBSurface(SDL_SWSURFACE, pxw, pxh, 32,
+	                               pRealScrn->format->Rmask, pRealScrn->format->Gmask,
+	                               pRealScrn->format->Bmask, pRealScrn->format->Amask);
+	z->bg = SDL_CreateRGBSurface(SDL_SWSURFACE, z->dst.w, z->dst.h, 32,
+	                             pRealScrn->format->Rmask, pRealScrn->format->Gmask,
+	                             pRealScrn->format->Bmask, pRealScrn->format->Amask);
+	if (!z->virt || !z->bg)
+	{
+		if (z->virt) SDL_FreeSurface(z->virt);
+		if (z->bg) SDL_FreeSurface(z->bg);
+		memset(z, 0, sizeof(*z));
+		return false;
+	}
+	bgr.x = bgr.y = 0; bgr.w = z->dst.w; bgr.h = z->dst.h;
+	SDL_BlitSurface(pRealScrn, &z->dst, z->bg, &bgr);
+
+	z->prevscrn = pSdlGuiScrn;
+	z->prev = pCurZoom;
+	pCurZoom = z;
+	pSdlGuiScrn = z->virt;
+	return true;
+}
+
+void SDLGui_ZoomEnd(SGZoom *z)
+{
+	SDL_Rect bgr;
+
+	if (!z->virt)
+		return;
+	bgr.x = bgr.y = 0; bgr.w = z->dst.w; bgr.h = z->dst.h;
+	SDL_BlitSurface(z->bg, &bgr, pRealScrn, &z->dst);
+	Screen_UpdateRect(pRealScrn, z->dst.x, z->dst.y, z->dst.w, z->dst.h);
+	pSdlGuiScrn = z->prevscrn;
+	pCurZoom = z->prev;
+	SDL_FreeSurface(z->virt);
+	SDL_FreeSurface(z->bg);
+	memset(z, 0, sizeof(*z));
+}
+
+/** Show the (virtual) dialog surface: scale it onto the real screen. */
+void SDLGui_Present(int x, int y, int w, int h)
+{
+	if (pCurZoom)
+	{
+		SDL_Rect d = pCurZoom->dst;
+		SDL_BlitScaled(pCurZoom->virt, NULL, pRealScrn, &d);
+		Screen_UpdateRect(pRealScrn, d.x, d.y, d.w, d.h);
+	}
+	else
+		Screen_UpdateRect(pSdlGuiScrn, x, y, w, h);
+}
+
+/** Convert real screen coordinates to dialog coordinates when zoomed. */
+static void SDLGui_ZoomMouse(int *x, int *y)
+{
+	if (pCurZoom)
+	{
+		*x = (int)((*x - pCurZoom->dst.x) / pCurZoom->scale);
+		*y = (int)((*y - pCurZoom->dst.y) / pCurZoom->scale);
+	}
+}
+
 /*-----------------------------------------------------------------------*/
 /**
  * Draw a whole dialog.
@@ -813,7 +914,7 @@ void SDLGui_DrawDialog(const SGOBJ *dlg)
 	{
 		SDLGui_DrawObj(dlg, i);
 	}
-	Screen_UpdateRect(pSdlGuiScrn, 0,0,0,0);
+	SDLGui_Present(0, 0, 0, 0);
 }
 
 
@@ -1010,7 +1111,7 @@ static int SDLGui_FocusNext(SGOBJ *dlg, int i, int inc)
 		{
 			dlg[i].state |= SG_FOCUSED;
 			SDLGui_DrawObj(dlg, i);
-			Screen_UpdateRect(pSdlGuiScrn, 0,0,0,0);
+			SDLGui_Present(0,0,0,0);
 			return i;
 		}
 		/* wrapped around without even initial one matching */
@@ -1056,7 +1157,7 @@ static int SDLGui_HandleSelection(SGOBJ *dlg, int obj, int oldbutton)
 			rct.h = sdlgui_fontheight;
 			SDL_FillRect(pSdlGuiScrn, &rct, colors.midgrey); /* Clear old */
 			SDLGui_DrawRadioButton(dlg, i);
-			Screen_UpdateRects(pSdlGuiScrn, 1, &rct);
+			SDLGui_Present(rct.x, rct.y, rct.w, rct.h);
 		}
 		for (i = obj+1; dlg[i].type == SGRADIOBUT; i++)
 		{
@@ -1067,7 +1168,7 @@ static int SDLGui_HandleSelection(SGOBJ *dlg, int obj, int oldbutton)
 			rct.h = sdlgui_fontheight;
 			SDL_FillRect(pSdlGuiScrn, &rct, colors.midgrey); /* Clear old */
 			SDLGui_DrawRadioButton(dlg, i);
-			Screen_UpdateRects(pSdlGuiScrn, 1, &rct);
+			SDLGui_Present(rct.x, rct.y, rct.w, rct.h);
 		}
 		dlg[obj].state |= SG_SELECTED;  /* Select this radio button */
 		rct.x = (dlg[0].x+dlg[obj].x)*sdlgui_fontwidth;
@@ -1076,7 +1177,7 @@ static int SDLGui_HandleSelection(SGOBJ *dlg, int obj, int oldbutton)
 		rct.h = sdlgui_fontheight;
 		SDL_FillRect(pSdlGuiScrn, &rct, colors.midgrey); /* Clear old */
 		SDLGui_DrawRadioButton(dlg, obj);
-		Screen_UpdateRects(pSdlGuiScrn, 1, &rct);
+		SDLGui_Present(rct.x, rct.y, rct.w, rct.h);
 		break;
 	case SGCHECKBOX:
 		dlg[obj].state ^= SG_SELECTED;
@@ -1086,12 +1187,12 @@ static int SDLGui_HandleSelection(SGOBJ *dlg, int obj, int oldbutton)
 		rct.h = sdlgui_fontheight;
 		SDL_FillRect(pSdlGuiScrn, &rct, colors.midgrey); /* Clear old */
 		SDLGui_DrawCheckBox(dlg, obj);
-		Screen_UpdateRects(pSdlGuiScrn, 1, &rct);
+		SDLGui_Present(rct.x, rct.y, rct.w, rct.h);
 		break;
 	case SGPOPUP:
 		dlg[obj].state |= SG_SELECTED;
 		SDLGui_DrawPopupButton(dlg, obj);
-		Screen_UpdateRect(pSdlGuiScrn,
+		SDLGui_Present(
 			       (dlg[0].x+dlg[obj].x)*sdlgui_fontwidth-2,
 			       (dlg[0].y+dlg[obj].y)*sdlgui_fontheight-2,
 			       dlg[obj].w*sdlgui_fontwidth+4,
@@ -1146,8 +1247,9 @@ void SDLGui_ScaleMouseStateCoordinates(int *x, int *y)
 	int win_width, win_height;
 	SDL_GetWindowSize(sdlWindow, &win_width, &win_height);
 
-	*x = *x * pSdlGuiScrn->w / win_width;
-	*y = *y * pSdlGuiScrn->h / win_height;
+	*x = *x * pRealScrn->w / win_width;
+	*y = *y * pRealScrn->h / win_height;
+	SDLGui_ZoomMouse(x, y);
 }
 
 /**
@@ -1157,12 +1259,17 @@ static void SDLGui_ScaleMouseButtonCoordinates(SDL_Event *event)
 {
 	SDL_MouseButtonEvent *bev = &event->button;
 
-	if (bInFullScreen)
+	if (bInFullScreen && !ConfigureParams.Screen.bStretchFullScreen)
 	{
 #if ENABLE_SDL3
 		SDL_ConvertEventToRenderCoordinates(SDL_GetRenderer(sdlWindow),
 		                                    event);
 #endif
+		{
+			int fx = bev->x, fy = bev->y;
+			SDLGui_ZoomMouse(&fx, &fy);
+			bev->x = fx; bev->y = fy;
+		}
 		return;
 	}
 
@@ -1190,7 +1297,7 @@ static void SDLGui_ScaleMouseButtonCoordinates(SDL_Event *event)
  *   => event is stored to pEventOut and SDLGUI_UNKNOWNEVENT returned
  * GUI item indices are positive, other return values are negative
  */
-int SDLGui_DoDialogExt(SGOBJ *dlg, bool (*isEventOut)(SDL_EventType), SDL_Event *pEventOut, int current_object)
+static int SDLGui_DoDialogExtInner(SGOBJ *dlg, bool (*isEventOut)(SDL_EventType), SDL_Event *pEventOut, int current_object)
 {
 	int oldbutton = SDLGUI_NOTFOUND;
 	int retbutton = SDLGUI_NOTFOUND;
@@ -1348,7 +1455,7 @@ int SDLGui_DoDialogExt(SGOBJ *dlg, bool (*isEventOut)(SDL_EventType), SDL_Event 
 					{
 						dlg[obj].state |= SG_SELECTED;
 						SDLGui_DrawButton(dlg, obj);
-						Screen_UpdateRect(pSdlGuiScrn, (dlg[0].x+dlg[obj].x)*sdlgui_fontwidth-2, (dlg[0].y+dlg[obj].y)*sdlgui_fontheight-2,
+						SDLGui_Present((dlg[0].x+dlg[obj].x)*sdlgui_fontwidth-2, (dlg[0].y+dlg[obj].y)*sdlgui_fontheight-2,
 						               dlg[obj].w*sdlgui_fontwidth+4, dlg[obj].h*sdlgui_fontheight+4);
 						oldbutton=obj;
 					}
@@ -1383,7 +1490,7 @@ int SDLGui_DoDialogExt(SGOBJ *dlg, bool (*isEventOut)(SDL_EventType), SDL_Event 
 				{
 					dlg[oldbutton].state &= ~SG_SELECTED;
 					SDLGui_DrawButton(dlg, oldbutton);
-					Screen_UpdateRect(pSdlGuiScrn, (dlg[0].x+dlg[oldbutton].x)*sdlgui_fontwidth-2, (dlg[0].y+dlg[oldbutton].y)*sdlgui_fontheight-2,
+					SDLGui_Present((dlg[0].x+dlg[oldbutton].x)*sdlgui_fontwidth-2, (dlg[0].y+dlg[oldbutton].y)*sdlgui_fontheight-2,
 					               dlg[oldbutton].w*sdlgui_fontwidth+4, dlg[oldbutton].h*sdlgui_fontheight+4);
 					oldbutton = SDLGUI_NOTFOUND;
 				}
@@ -1536,7 +1643,7 @@ int SDLGui_DoDialogExt(SGOBJ *dlg, bool (*isEventOut)(SDL_EventType), SDL_Event 
 				 case SDL_WINDOWEVENT_SIZE_CHANGED:
 				 case SDL_WINDOWEVENT_RESTORED:
 				 case SDL_WINDOWEVENT_EXPOSED:
-					Screen_UpdateRect(pSdlGuiScrn, 0, 0, 0, 0);
+					SDLGui_Present(0, 0, 0, 0);
 					break;
 #if !ENABLE_SDL3
 				}
@@ -1576,6 +1683,27 @@ int SDLGui_DoDialogExt(SGOBJ *dlg, bool (*isEventOut)(SDL_EventType), SDL_Event 
 
 	Dprintf(("EXIT - ret: %d\n", retbutton));
 	return retbutton;
+}
+
+/*-----------------------------------------------------------------------*/
+/**
+ * Show a dialog scaled up to fill the screen (see SDLGui_ZoomBegin).
+ */
+int SDLGui_DoDialogExt(SGOBJ *dlg, bool (*isEventOut)(SDL_EventType), SDL_Event *pEventOut, int current_object)
+{
+	SGZoom z;
+	int ox = dlg[0].x, oy = dlg[0].y, ret;
+
+	if (SDLGui_ZoomBegin(&z, dlg[0].w * sdlgui_fontwidth, dlg[0].h * sdlgui_fontheight))
+	{
+		dlg[0].x = dlg[0].y = 0;
+		ret = SDLGui_DoDialogExtInner(dlg, isEventOut, pEventOut, current_object);
+		SDLGui_ZoomEnd(&z);
+		dlg[0].x = ox;
+		dlg[0].y = oy;
+		return ret;
+	}
+	return SDLGui_DoDialogExtInner(dlg, isEventOut, pEventOut, current_object);
 }
 
 /*-----------------------------------------------------------------------*/

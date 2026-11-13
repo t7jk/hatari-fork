@@ -77,6 +77,13 @@ void Screen_UpdateRects(SDL_Surface *screen, int numrects, SDL_Rect *rects)
 			SDL_RenderClear(sdlRenderer);
 		SDL_RenderCopy(sdlRenderer, sdlTexture, NULL, NULL);
 		SDL_RenderPresent(sdlRenderer);
+		if (bInFullScreen)
+		{
+			/* present twice so that both buffers of a flipping
+			 * (double buffered) fullscreen window hold the frame */
+			SDL_RenderCopy(sdlRenderer, sdlTexture, NULL, NULL);
+			SDL_RenderPresent(sdlRenderer);
+		}
 	}
 	else
 	{
@@ -330,7 +337,7 @@ void Screen_SetTextureScale(int width, int height, int win_width, int win_height
 
 	scale_w = (float)win_width / width;
 	scale_h = (float)win_height / height;
-	if (bInFullScreen)
+	if (bInFullScreen && !ConfigureParams.Screen.bStretchFullScreen)
 		/* SDL letterboxes fullscreen so it's enough for
 		 * closest dimension to window size being evenly
 		 * divisible.
@@ -535,7 +542,7 @@ bool Screen_SetVideoSize(int width, int height, bool bForceChange)
 			Main_ErrorExit("Failed to create renderer:", SDL_GetError(), 1);
 		}
 
-		if (bInFullScreen)
+		if (bInFullScreen && !ConfigureParams.Screen.bStretchFullScreen)
 #if ENABLE_SDL3
 			SDL_SetRenderLogicalPresentation(sdlRenderer, width,
 							 height,
@@ -543,6 +550,9 @@ bool Screen_SetVideoSize(int width, int height, bool bForceChange)
 #else
 			SDL_RenderSetLogicalSize(sdlRenderer, width, height);
 #endif
+		else if (bInFullScreen)
+			/* stretch to the whole display: texture goes to full window */
+			SDL_RenderSetScale(sdlRenderer, 1, 1);
 		else
 			SDL_RenderSetScale(sdlRenderer, scale, scale);
 

@@ -213,6 +213,7 @@ void Change_CopyChangedParamsToConfiguration(CNF_PARAMS *current, CNF_PARAMS *ch
 	 */
 	if (!NeedReset &&
 	    (changed->Screen.bAspectCorrect != current->Screen.bAspectCorrect
+	     || changed->Screen.bStretchFullScreen != current->Screen.bStretchFullScreen
 	     || changed->Screen.nMaxWidth != current->Screen.nMaxWidth
 	     || changed->Screen.nMaxHeight != current->Screen.nMaxHeight
 	     || changed->Screen.bAllowOverscan != current->Screen.bAllowOverscan

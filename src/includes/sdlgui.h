@@ -76,6 +76,18 @@ typedef struct
   int shortcut;         /* shortcut key */
 }  SGOBJ;
 
+/* dialog zoom (draw on a small surface, scaled to fill the screen) */
+typedef struct SGZoom
+{
+	SDL_Surface *virt, *bg, *prevscrn;
+	struct SGZoom *prev;
+	SDL_Rect dst;
+	float scale;
+} SGZoom;
+extern bool SDLGui_ZoomBegin(SGZoom *z, int pxw, int pxh);
+extern void SDLGui_ZoomEnd(SGZoom *z);
+extern void SDLGui_Present(int x, int y, int w, int h);
+
 extern int sdlgui_fontwidth;	/* Width of the actual font */
 extern int sdlgui_fontheight;	/* Height of the actual font */
 

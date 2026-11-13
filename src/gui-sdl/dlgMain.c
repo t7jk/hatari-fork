@@ -15,6 +15,7 @@ const char DlgMain_fileid[] = "Hatari dlgMain.c";
 #include "sdlgui.h"
 #include "screen.h"
 #include "screen_sdl.h"
+#include "browser.h"
 
 
 #define MAINDLG_SYSTEM   2
@@ -30,6 +31,7 @@ const char DlgMain_fileid[] = "Hatari dlgMain.c";
 #define MAINDLG_KEYBD    12
 #define MAINDLG_DEVICES  13
 #define MAINDLG_SOUND    14
+#define MAINDLG_BROWSER  23
 #define MAINDLG_ABOUT    15
 #define MAINDLG_LOADCFG  16
 #define MAINDLG_SAVECFG  17
@@ -66,6 +68,7 @@ static SGOBJ maindlg[] =
 	{ SGBUTTON, SG_DEFAULT, 0, 21,17, 8,3, "OK" },
 	{ SGBUTTON, 0, 0, 36,17, 10,1, "_Quit" },
 	{ SGBUTTON, SG_CANCEL, 0, 36,19, 10,1, "Cancel" },
+	{ SGBUTTON, 0, 0, 35,12, 13,1, "Bro_wser" },
 	{ SGSTOP, 0, 0, 0,0, 0,0, NULL }
 };
 
@@ -144,6 +147,15 @@ int Dialog_MainDlg(bool *bReset, bool *bLoadedSnapshot)
 			break;
 		 case MAINDLG_SOUND:
 			Dialog_SoundDlg();
+			break;
+		 case MAINDLG_BROWSER:
+			if (DlgBrowser_Main())
+			{
+				/* disk inserted: leave GUI and reset the machine */
+				maindlg[MAINDLG_NORESET].state &= ~SG_SELECTED;
+				maindlg[MAINDLG_RESET].state |= SG_SELECTED;
+				retbut = MAINDLG_OK;
+			}
 			break;
 		 case MAINDLG_RECORD:
 			Dialog_RecordingDlg();
